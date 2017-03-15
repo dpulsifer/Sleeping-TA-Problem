@@ -5,6 +5,9 @@
 #include <semaphore.h>
 #include <time.h>
 
+void* student_actions(void* stu_id);
+void* ta_actions();
+
 #define NUM_WAITING_CHAIRS 3
 
 sem_t sem_students;
@@ -13,23 +16,17 @@ pthread_mutex_t mutex_thread;
 
 int waiting_room_chairs[3];
 int number_students_waiting = 0;
-int next_seat_position = 0;
-int next_teach_position = 0;
-
-void rand_sleep(void);
-void* stu_programming(void* stu_id);
-void* ta_teaching();
+int next_seating_position = 0;
+int next_teaching_position = 0;
+int ta_sleeping_flag = 0;
 
 int main(int argc, char **argv){
 
-	//thread(s)
 	pthread_t *students;
 	pthread_t ta;
 
 	int* student_ids;
 	int student_num;
-
-	//index
 	int i;
 
 	//get number of students from user
@@ -47,11 +44,11 @@ int main(int argc, char **argv){
 
 	//Create threads.
 	pthread_mutex_init(&mutex_thread,NULL);
-	pthread_create(&ta,NULL,ta_teaching,NULL);
+	pthread_create(&ta,NULL,ta_actions,NULL);
 	for(i=0; i<student_num; i++)
 	{
 		student_ids[i] = i+1;
-		pthread_create(&students[i], NULL, stu_programming, (void*) &student_ids[i]);
+		pthread_create(&students[i], NULL, student_actions, (void*) &student_ids[i]);
 	}
 
 	//Join threads
@@ -64,7 +61,7 @@ int main(int argc, char **argv){
 	return 0;
 }
 
-void* stu_programming(void* stu_id) {
+void* student_actions(void* stu_id) {
 
 	int id = *(int*)stu_id;
 
@@ -81,12 +78,12 @@ void* stu_programming(void* stu_id) {
 
 		if( number_students_waiting < NUM_WAITING_CHAIRS ) {
 
-			waiting_room_chairs[next_seat_position] = id;
+			waiting_room_chairs[next_seating_position] = id;
 			number_students_waiting++;
 
 			//Student takes a seat in the hallway.
 			printf( "\t\tStudent %d takes a seat. Students waiting = %d.\n", id, number_students_waiting );
-			next_seat_position = ( next_seat_position + 1 ) % NUM_WAITING_CHAIRS;
+			next_seating_position = ( next_seating_position + 1 ) % NUM_WAITING_CHAIRS;
 
 			pthread_mutex_unlock( &mutex_thread );
 
@@ -108,12 +105,15 @@ void* stu_programming(void* stu_id) {
 
 }
 
-void* ta_teaching() {
+void* ta_actions() {
+
+	printf("Checking for students.\n");
 
 	while(1) {
 
 		if ( number_students_waiting > 0 ) {
 
+			ta_sleeping_flag = 0;
 			sem_wait( &sem_students );
 			pthread_mutex_lock( &mutex_thread );
 
@@ -121,16 +121,26 @@ void* ta_teaching() {
 
 			//TA helping student.
 			printf( "Helping a student for %d seconds. Students waiting = %d.\n", help_time, (number_students_waiting - 1) );
-			printf( "Student %d receiving help.\n",waiting_room_chairs[next_teach_position] );
+			printf( "Student %d receiving help.\n",waiting_room_chairs[next_teaching_position] );
 
-			waiting_room_chairs[next_teach_position]=0;
+			waiting_room_chairs[next_teaching_position]=0;
 			number_students_waiting--;
-			next_teach_position = ( next_teach_position + 1 ) % NUM_WAITING_CHAIRS;
+			next_teaching_position = ( next_teaching_position + 1 ) % NUM_WAITING_CHAIRS;
 
 			sleep( help_time );
 
 			pthread_mutex_unlock( &mutex_thread );
 			sem_post( &sem_ta );
+
+			printf("Checking for students.\n");
+
+		}
+		else {
+
+			if ( ta_sleeping_flag == 0 ) {
+				printf( "No students waiting. Sleeping.\n" );
+				ta_sleeping_flag = 1;
+			}
 
 		}
 
