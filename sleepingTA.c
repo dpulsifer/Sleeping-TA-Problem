@@ -8,6 +8,7 @@ void* student_actions( void* student_id );
 void* ta_actions();
 
 #define NUM_WAITING_CHAIRS 3
+#define DEFAULT_NUM_STUDENTS 5
 
 sem_t sem_students;
 sem_t sem_ta;
@@ -18,23 +19,24 @@ int number_students_waiting = 0;
 int next_seating_position = 0;
 int next_teaching_position = 0;
 int ta_sleeping_flag = 0;
-//int num_appointments = 0;
-//int total_num_appointments;
 
 int main( int argc, char **argv ){
 
 	int i;
 	int student_num;
 
-	//get number of students from user
-	printf( "How many students are present? " );
-	scanf( "%d", &student_num );
-
-	/*
-	//get total number of meetings for exit conditional
-	printf( "How many meetings will the TA be taking? " );
-	scanf( "%d", &total_num_appointments );
-	*/
+	if (argc > 1 ) {
+		if ( isNumber( argv[1] ) == 1) {
+			student_num = atoi( argv[1] );
+		}
+		else {
+			printf("Invalid input. Quitting program.");
+			return 0;
+		}
+	}
+	else {
+		student_num = DEFAULT_NUM_STUDENTS;
+	}
 
 	int student_ids[student_num];
 	pthread_t students[student_num];
@@ -59,11 +61,6 @@ int main( int argc, char **argv ){
 		pthread_join( students[i],NULL );
 	}
 
-	/*
-	//all appointments complete
-	printf("%d appointments complete. The TA has left.\n", total_num_appointments);
-	*/
-
 	return 0;
 }
 
@@ -72,16 +69,6 @@ void* ta_actions() {
 	printf( "Checking for students.\n" );
 
 	while( 1 ) {
-
-		/*
-		//if total appointments reached, return
-		if ( num_appointments == total_num_appointments ) {
-
-			void* result;
-			return result;
-
-		}
-		*/
 
 		//if students are waiting
 		if ( number_students_waiting > 0 ) {
@@ -101,8 +88,6 @@ void* ta_actions() {
 			next_teaching_position = ( next_teaching_position + 1 ) % NUM_WAITING_CHAIRS;
 
 			sleep( help_time );
-
-			//num_appointments++;
 
 			pthread_mutex_unlock( &mutex_thread );
 			sem_post( &sem_ta );
@@ -130,16 +115,6 @@ void* student_actions( void* student_id ) {
 
 	while( 1 ) {
 
-		/*
-		//if total appointments reached, return
-		if ( num_appointments == total_num_appointments ) {
-
-			void* result;
-			return result;
-
-		}
-		*/
-
 		//if student is waiting, continue waiting
 		if ( isWaiting( id_student ) == 1 ) { continue; }
 
@@ -161,6 +136,7 @@ void* student_actions( void* student_id ) {
 
 			pthread_mutex_unlock( &mutex_thread );
 
+			//wake TA if sleeping
 			sem_post( &sem_students );
 			sem_wait( &sem_ta );
 
@@ -176,6 +152,17 @@ void* student_actions( void* student_id ) {
 
 	}
 
+}
+
+int isNumber(char number[])
+{
+    int i;
+		for ( i = 0 ; number[i] != 0; i++ )
+    {
+        if (!isdigit(number[i]))
+            return 0;
+    }
+    return 1;
 }
 
 int isWaiting( int student_id ) {
