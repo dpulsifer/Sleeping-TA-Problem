@@ -12,6 +12,6 @@ The program can take 0 or 1 command line parameters. The number of students pres
 ## To Run
 * Navigate to the Sleeping-TA-Problem directory.
 * From the command line, run make or make all.
-* From the command line, run ./sleepingTA
-* If specifying the number of students present, include that integer as a parameter.
+* From the command line, run ./sleepingTA (if specifying the number of students present, include that integer as a parameter).
+* Results will print to console.
 * Press Ctrl-C to exit the program.
